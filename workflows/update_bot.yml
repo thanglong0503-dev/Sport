@@ -2,8 +2,9 @@ name: Tự động cập nhật Tỷ số World Cup
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Tự động chạy mỗi 30 phút. (Bạn có thể đổi thành */15)
-  workflow_dispatch:        # Cho phép bấm nút chạy thủ công
+    # Chạy 1 lần/ngày vào lúc 01:00 UTC (tương đương 8:00 sáng giờ Việt Nam)
+    - cron: '0 1 * * *'  
+  workflow_dispatch:        # Vẫn giữ nguyên dòng này để bạn có thể bấm chạy thủ công bằng tay bất cứ lúc nào
 
 jobs:
   run-bot:
