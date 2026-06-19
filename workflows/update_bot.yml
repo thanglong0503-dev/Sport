@@ -1,0 +1,26 @@
+name: Tự động cập nhật Tỷ số World Cup
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Tự động chạy mỗi 30 phút. (Bạn có thể đổi thành */15)
+  workflow_dispatch:        # Cho phép bấm nút chạy thủ công
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lấy mã nguồn
+        uses: actions/checkout@v3
+
+      - name: Cài đặt Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cài đặt thư viện
+        run: pip install -r requirements.txt
+
+      - name: Chạy Bot Cập Nhật
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        run: python bot_update.py
