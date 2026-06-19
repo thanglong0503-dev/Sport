@@ -1,9 +1,7 @@
-name: Tự động cập nhật Tỷ số World Cup
+name: Cập nhật Tỷ số World Cup 2026 (Manual Only)
 
 on:
-  schedule:
-    - cron: '0 1 * * *'  # Chạy 1 lần/ngày vào 8h sáng VN
-  workflow_dispatch:        
+  workflow_dispatch: # Chỉ chạy khi bấm nút "Run workflow"
 
 jobs:
   run-bot:
