@@ -40,7 +40,7 @@ def fetch_live_data():
     # Lấy giải World Cup (id: 1), mùa 2026, và tự động chuyển giờ sang GMT+7 (Hồ Chí Minh)
     params = {
         "league": "1", 
-        "season": "2026",
+        "season": "2022",
         "timezone": "Asia/Ho_Chi_Minh"
     }
     
