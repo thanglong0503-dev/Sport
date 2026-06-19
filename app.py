@@ -261,41 +261,72 @@ st.markdown("""
 
 
 # ==========================================
-# 2. DỮ LIỆU MẪU (BACKEND MOCK)
-# Ghi chú: Trong thực tế, bạn sẽ dùng pd.read_csv("link_google_sheets") ở đây
+# 2. KẾT NỐI DỮ LIỆU TỪ GOOGLE SHEETS
 # ==========================================
+
+@st.cache_data(ttl=60)
 def load_data():
-    # Database Các đội bóng & Cờ (Sử dụng FlagCDN để có cờ chuẩn nét)
+    # Link Export CSV từ Google Sheets của bạn
+    sheet_csv_url = "https://docs.google.com/spreadsheets/d/1MjLscwg33h8ljGSo6k2rs13ZckSMUZI4JNCxBB_X3Yg/export?format=csv&gid=0"
+    
+    try:
+        # Load data trực tiếp từ link Sheets
+        df_matches = pd.read_csv(sheet_csv_url)
+        
+        # Đảm bảo các cột cần thiết tồn tại và xử lý lỗi chính tả nếu có
+        col_mapping = {
+            'Trận': 'id',
+            'Ngày': 'day',
+            'Giờ (VN)': 'time',
+            'Bảng': 'group',
+            'Vòng': 'stage',
+            'Đội 1': 'home',
+            'Đội 2': 'away',
+            'Tỷ số 1': 'home_score',
+            'Tỷ số 2': 'away_score',
+            'Trạng thái': 'status',
+            'Sân': 'stadium'
+        }
+        
+        # Đổi tên cột trong DataFrame
+        df_matches = df_matches.rename(columns=col_mapping)
+        
+        # Tạo cột 'date_str' từ 'day' để gom nhóm
+        if 'day' in df_matches.columns:
+             df_matches['date_str'] = df_matches['day']
+             
+    except Exception as e:
+        st.error(f"⚠️ Lỗi kết nối Google Sheets: {e}. Vui lòng kiểm tra lại quyền truy cập hoặc định dạng dữ liệu.")
+        return pd.DataFrame()
+
+    # Tạm thời dùng cờ ngẫu nhiên hoặc cờ trắng nếu không có sẵn trong thư viện
     teams = {
         "Mexico": "mx", "Nam Phi": "za", 
         "Hàn Quốc": "kr", "CH Czech": "cz",
         "Canada": "ca", "Bosnia & Herz.": "ba",
-        "Mỹ": "us", "Paraguay": "py"
+        "Mỹ": "us", "Paraguay": "py",
+        "Brazil": "br", "Pháp": "fr",
+        "Anh": "gb-eng", "Đức": "de",
+        "Tây Ban Nha": "es", "Hà Lan": "nl",
+        "Argentina": "ar", "Nhật Bản": "jp",
+        "Senegal": "sn"
     }
     
-    # Bảng Matches
-    matches_data = [
-        {"id": 1, "date_str": "Ngày 12/6", "day": "Thứ 6, 12/6", "time": "20:00", "group": "Bảng A", "stage": "Vòng đấu bảng", 
-         "home": "Mexico", "away": "Nam Phi", "home_score": 2, "away_score": 0, "status": "Kết thúc", "stadium": "Estadio Azteca, Mexico City"},
-        {"id": 2, "date_str": "Ngày 12/6", "day": "Thứ 6, 12/6", "time": "23:00", "group": "Bảng A", "stage": "Vòng đấu bảng", 
-         "home": "Hàn Quốc", "away": "CH Czech", "home_score": 2, "away_score": 1, "status": "Kết thúc", "stadium": "Estadio Akron, Guadalajara"},
-        {"id": 3, "date_str": "Ngày 13/6", "day": "Thứ 7, 13/6", "time": "18:00", "group": "Bảng B", "stage": "Vòng đấu bảng", 
-         "home": "Canada", "away": "Bosnia & Herz.", "home_score": 1, "away_score": 1, "status": "Kết thúc", "stadium": "BMO Field, Toronto"},
-        {"id": 4, "date_str": "Ngày 13/6", "day": "Thứ 7, 13/6", "time": "21:00", "group": "Bảng D", "stage": "Vòng đấu bảng", 
-         "home": "Mỹ", "away": "Paraguay", "home_score": 4, "away_score": 1, "status": "Kết thúc", "stadium": "Lumen Field, Seattle"},
-        {"id": 5, "date_str": "Ngày 14/6", "day": "Chủ nhật, 14/6", "time": "02:00", "group": "Bảng A", "stage": "Vòng đấu bảng", 
-         "home": "CH Czech", "away": "Nam Phi", "home_score": 1, "away_score": 1, "status": "Kết thúc", "stadium": "Mercedes-Benz Stadium, Atlanta"},
-        {"id": 6, "date_str": "Ngày 14/6", "day": "Chủ nhật, 14/6", "time": "08:00", "group": "Bảng A", "stage": "Vòng đấu bảng", 
-         "home": "Mexico", "away": "Hàn Quốc", "home_score": 1, "away_score": 0, "status": "Đang diễn ra", "stadium": "Estadio Akron, Guadalajara"}
-    ]
-    df_matches = pd.DataFrame(matches_data)
-    
+    # Hàm an toàn để lấy cờ
+    def get_flag_url(team_name):
+        if pd.isna(team_name):
+            return "https://flagcdn.com/w80/un.png" # Cờ mặc định
+        code = teams.get(str(team_name).strip(), 'un')
+        return f"https://flagcdn.com/w80/{code}.png"
+        
     # Mapping Cờ vào DF
-    df_matches['home_flag'] = df_matches['home'].map(lambda x: f"https://flagcdn.com/w80/{teams.get(x, 'un')}.png")
-    df_matches['away_flag'] = df_matches['away'].map(lambda x: f"https://flagcdn.com/w80/{teams.get(x, 'un')}.png")
+    if 'home' in df_matches.columns and 'away' in df_matches.columns:
+        df_matches['home_flag'] = df_matches['home'].map(get_flag_url)
+        df_matches['away_flag'] = df_matches['away'].map(get_flag_url)
     
     return df_matches
 
+# Khởi chạy hàm lấy dữ liệu
 df = load_data()
 
 
@@ -304,35 +335,51 @@ df = load_data()
 # ==========================================
 def render_match_card(row, show_stadium=False):
     """Tạo HTML Component cho một thẻ trận đấu chuyên nghiệp"""
-    status_class = "live" if row['status'] == "Đang diễn ra" else ""
-    stadium_html = f'<div class="stadium-text">{row["stadium"]}</div>' if show_stadium else ''
+    status = str(row.get('status', ''))
+    stadium = str(row.get('stadium', ''))
+    home_team = str(row.get('home', 'Chưa xác định'))
+    away_team = str(row.get('away', 'Chưa xác định'))
+    stage = str(row.get('stage', ''))
+    group = str(row.get('group', ''))
+    home_flag = str(row.get('home_flag', 'https://flagcdn.com/w80/un.png'))
+    away_flag = str(row.get('away_flag', 'https://flagcdn.com/w80/un.png'))
+    time = str(row.get('time', ''))
+
+    status_class = "live" if status.lower() in ["đang diễn ra", "live"] else ""
+    stadium_html = f'<div class="stadium-text">{stadium}</div>' if show_stadium and stadium and stadium != 'nan' else ''
     
-    # Score format
-    if pd.isna(row['home_score']):
-        score_text = "vs"
+    # Hiển thị giờ nếu chưa đá, hiển thị tỷ số nếu đã/đang đá
+    home_score = row.get('home_score')
+    away_score = row.get('away_score')
+    
+    if pd.isna(home_score) or pd.isna(away_score) or str(home_score).strip() == "" or str(away_score).strip() == "":
+        score_text = time if time and time != 'nan' else "vs"
     else:
-        score_text = f"{int(row['home_score'])} - {int(row['away_score'])}"
+        try:
+             score_text = f"{int(float(home_score))} - {int(float(away_score))}"
+        except ValueError:
+             score_text = "vs"
 
     html = f"""
     <div class="match-card">
         {stadium_html}
         <div class="score-row">
             <div class="team home">
-                <span class="team-name">{row['home']}</span>
-                <img src="{row['home_flag']}" class="flag" alt="{row['home']}">
+                <span class="team-name">{home_team}</span>
+                <img src="{home_flag}" class="flag" alt="{home_team}">
             </div>
             
             <div class="score-box">
-                <div class="status-pill {status_class}">{row['status']}</div>
+                <div class="status-pill {status_class}">{status if status != 'nan' else 'Sắp diễn ra'}</div>
                 <div class="score-number">{score_text}</div>
             </div>
             
             <div class="team away">
-                <img src="{row['away_flag']}" class="flag" alt="{row['away']}">
-                <span class="team-name">{row['away']}</span>
+                <img src="{away_flag}" class="flag" alt="{away_team}">
+                <span class="team-name">{away_team}</span>
             </div>
         </div>
-        <div class="match-footer">{row['stage']} • {row['group']}</div>
+        <div class="match-footer">{stage if stage != 'nan' else ''} {('• ' + group) if group and group != 'nan' else ''}</div>
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
@@ -343,7 +390,11 @@ def render_match_card(row, show_stadium=False):
 # ==========================================
 st.markdown('<div class="main-title">Lịch đấu World Cup 2026</div>', unsafe_allow_html=True)
 
-# Khung điều hướng chính (Sử dụng st.radio được CSS ghi đè thành Segmented Tabs)
+if df.empty:
+    st.warning("Không có dữ liệu để hiển thị. Vui lòng kiểm tra lại Google Sheets.")
+    st.stop()
+
+# Khung điều hướng chính
 col_nav, col_empty, col_search = st.columns([6, 1, 3])
 with col_nav:
     view_mode = st.radio(
@@ -361,88 +412,87 @@ st.markdown("<br>", unsafe_allow_html=True)
 # TAB 1: XEM THEO NGÀY
 # ------------------------------------------
 if view_mode == "Xem theo ngày":
-    # Lấy danh sách các ngày có trận đấu
-    days = df['day'].unique().tolist()
-    
-    # Dùng radio button tiếp tục làm menu lọc ngày (Nằm ngang)
-    selected_day = st.radio("Chọn ngày", ["Tất cả"] + days, horizontal=True, label_visibility="collapsed")
-    
-    if selected_day == "Tất cả":
-        filtered_df = df
-    else:
-        filtered_df = df[df['day'] == selected_day]
+    if 'day' in df.columns:
+        days = df['day'].dropna().unique().tolist()
         
-    # Group dữ liệu theo Ngày để render
-    grouped = filtered_df.groupby('date_str')
-    
-    for date, group in grouped:
-        st.markdown(f'<div class="section-divider">{date}</div>', unsafe_allow_html=True)
-        for _, match in group.iterrows():
-            render_match_card(match, show_stadium=False)
+        if days:
+            selected_day = st.radio("Chọn ngày", ["Tất cả"] + days, horizontal=True, label_visibility="collapsed")
+            
+            if selected_day == "Tất cả":
+                filtered_df = df
+            else:
+                filtered_df = df[df['day'] == selected_day]
+                
+            if 'date_str' in filtered_df.columns:
+                grouped = filtered_df.groupby('date_str')
+                
+                for date, group in grouped:
+                    st.markdown(f'<div class="section-divider">{date}</div>', unsafe_allow_html=True)
+                    for _, match in group.iterrows():
+                        render_match_card(match, show_stadium=False)
+            else:
+                 st.write("Cột 'date_str' không tồn tại.")
+        else:
+            st.write("Chưa có dữ liệu ngày thi đấu.")
+    else:
+        st.error("Cột 'Ngày' hoặc 'day' không tồn tại trong dữ liệu. Vui lòng kiểm tra Google Sheets.")
 
 # ------------------------------------------
 # TAB 2: XEM THEO BẢNG
 # ------------------------------------------
 elif view_mode == "Xem theo bảng":
-    groups = sorted(df['group'].unique().tolist())
-    
-    # Bộ lọc Bảng (Giao diện thuốc viên - Pills)
-    selected_group = st.radio("Chọn bảng", groups, horizontal=True, label_visibility="collapsed")
-    
-    st.markdown(f'<div class="section-divider red" style="text-transform: uppercase;">{selected_group}</div>', unsafe_allow_html=True)
-    
-    filtered_df = df[df['group'] == selected_group]
-    
-    for _, match in filtered_df.iterrows():
-        # Ở chế độ xem theo bảng, hiển thị Tên Sân Vận Động ở trên cùng (Giống ảnh 2)
-        render_match_card(match, show_stadium=True)
+    if 'group' in df.columns:
+        groups = [str(g) for g in df['group'].dropna().unique().tolist() if str(g).strip() != "" and str(g).lower() != "nan"]
+        groups = sorted(groups)
+        
+        if groups:
+            selected_group = st.radio("Chọn bảng", groups, horizontal=True, label_visibility="collapsed")
+            st.markdown(f'<div class="section-divider red" style="text-transform: uppercase;">{selected_group}</div>', unsafe_allow_html=True)
+            
+            filtered_df = df[df['group'].astype(str) == selected_group]
+            
+            for _, match in filtered_df.iterrows():
+                render_match_card(match, show_stadium=True)
+        else:
+             st.write("Không tìm thấy thông tin Bảng đấu.")
+    else:
+        st.error("Cột 'Bảng' hoặc 'group' không tồn tại trong dữ liệu.")
 
 # ------------------------------------------
-# TAB 3: VÒNG LOẠI TRỰC TIẾP (KNOCKOUT BRACKET)
+# TAB 3: VÒNG LOẠI TRỰC TIẾP
 # ------------------------------------------
 elif view_mode == "Vòng loại trực tiếp":
-    
-    # Sử dụng hoàn toàn Custom HTML/CSS Flexbox để vẽ nhánh đấu
-    # Không dùng thư viện ngoài để đảm bảo tính nhẹ và tốc độ
-    
     bracket_html = """
     <div class="bracket">
-        <!-- CỘT 1: VÒNG 32 ĐỘI -->
         <div class="round">
             <div class="round-title">Vòng 32 Đội</div>
             
-            <!-- Trận 73 -->
             <div class="bracket-match">
                 <div class="b-match-header">Trận 73 • 02:00 • 29/6</div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Nhì bảng A</span></div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Nhì bảng B</span></div>
             </div>
             
-            <!-- Đường nối giữa trận 73, 75 ra trận 89 -->
             <div class="connector" style="top: 130px; bottom: 310px; right: -20px; width: 20px;"></div>
             <div class="connector" style="top: 220px; right: -40px; width: 20px; border:none; border-top: 2px solid #cbd5e1;"></div>
             
-            <!-- Trận 75 -->
             <div class="bracket-match" style="margin-top: 20px;">
                 <div class="b-match-header">Trận 75 • 03:30 • 30/6</div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Nhất bảng E</span></div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Hạng ba A/B/C/D/F</span></div>
             </div>
             
-            <div style="height: 60px;"></div> <!-- Khoảng trống -->
+            <div style="height: 60px;"></div>
             
-            <!-- Trận 74 -->
             <div class="bracket-match">
                 <div class="b-match-header">Trận 74 • 00:00 • 30/6</div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Nhất bảng C</span></div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Nhì bảng F</span></div>
             </div>
             
-            <!-- Đường nối giữa trận 74, 77 ra trận 90 -->
             <div class="connector" style="top: 480px; bottom: -40px; right: -20px; width: 20px;"></div>
             <div class="connector" style="top: 570px; right: -40px; width: 20px; border:none; border-top: 2px solid #cbd5e1;"></div>
 
-            <!-- Trận 77 -->
             <div class="bracket-match" style="margin-top: 20px;">
                 <div class="b-match-header">Trận 77 • 00:00 • 1/7</div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Nhì bảng E</span></div>
@@ -450,18 +500,15 @@ elif view_mode == "Vòng loại trực tiếp":
             </div>
         </div>
         
-        <!-- CỘT 2: VÒNG 16 ĐỘI -->
         <div class="round" style="margin-left: 40px; justify-content: flex-start; padding-top: 0px;">
             <div class="round-title">Vòng 16 Đội</div>
             
-            <!-- Trận 89 -->
             <div class="bracket-match" style="margin-top: 130px;">
                 <div class="b-match-header">Trận 89 • 00:00 • 5/7</div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Thắng trận 73</span></div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Thắng trận 75</span></div>
             </div>
             
-            <!-- Trận 90 -->
             <div class="bracket-match" style="margin-top: 180px;">
                 <div class="b-match-header">Trận 90 • 04:00 • 5/7</div>
                 <div class="b-team"><span class="b-flag"></span><span class="b-team-name">Thắng trận 74</span></div>
@@ -469,7 +516,6 @@ elif view_mode == "Vòng loại trực tiếp":
             </div>
         </div>
         
-        <!-- CỘT 3: TỨ KẾT (Chỗ trống để mở rộng sau) -->
         <div class="round" style="margin-left: 40px; justify-content: center; opacity: 0.3;">
             <div class="round-title">Tứ Kết</div>
             <div class="bracket-match">
