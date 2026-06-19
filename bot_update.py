@@ -47,7 +47,9 @@ def fetch_live_data():
     try:
         response = requests.get(url, headers=headers, params=params)
         data = response.json()
-        
+        # CHÈN THÊM 2 DÒNG NÀY ĐỂ XEM API ĐANG BÁO GÌ:
+        print("Lỗi từ API (nếu có):", data.get('errors'))
+        print("Số lượng trận đấu tìm thấy:", data.get('results'))
         matches = []
         for item in data.get('response', []):
             fixture = item.get('fixture', {})
