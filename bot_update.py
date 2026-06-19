@@ -16,7 +16,7 @@ try:
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 except TypeError:
     # Nếu chạy ở máy tính (Local), đổi tên file này thành file JSON bí mật của bạn
-    creds = ServiceAccountCredentials.from_json_keyfile_name('TEN_FILE_BIMAT_CUA_BAN.json', scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
 
 client = gspread.authorize(creds)
 
